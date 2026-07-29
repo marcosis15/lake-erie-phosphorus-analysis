@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($f = 'C:\\\\Users\\\\SisonM\\\\Downloads\\\\Code\\\\SQL Project.ipynb'; $item = Get-Item $f; Write-Output \"Size: $\\($item.Length\\) bytes\"; Write-Output \"LastWrite: $\\($item.LastWriteTime\\)\"; $raw = Get-Content $f -Raw; Write-Output \"RawLength: $\\($raw.Length\\)\")"
+    ]
+  }
+}
