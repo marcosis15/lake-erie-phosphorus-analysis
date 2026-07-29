@@ -10,6 +10,7 @@ Data was pulled from the Water Quality Portal (a joint USGS/EPA database), filte
 Site Type: Lake, Resovoir, Impoundement 
 Sample media: Water
 Characteristic group: Nutrient
+Note on geographic scope: the initial query was not restricted to specific counties, and a later coordinate check revealed a subset of returned stations (31 stations, 254 of 438 Phosphorus rows) fell well outside the Lake Erie basin, including sites near Columbus, OH, roughly 150 miles south of the lake. These were identified by checking station latitude/longitude against Lake Erie's known bounds and removed (filtered to latitude ≥ 41.0°N) before analysis. All results below reflect the corrected, geographically-validated dataset.
 
 ## **Data Cleaning**
 Cleaning presented a real unit-standardization challenge: phosphorus measurements in this dataset came reported in multiple unit conventions — mg/L, µg/L, "as P" (elemental phosphorus basis), and "as PO4" (phosphate ion basis). These aren't interchangeable; converting between them requires a molar mass ratio (94.97/30.97 ≈ 3.066).
@@ -28,25 +29,25 @@ A JOIN identifying 25 monitoring stations with both Phosphorus and Orthophosphat
 
 ## **Machine Learning — Phosphorus**
 
-Baseline (Linear Regression): Using Year and Month alone, R² = 0.22 — weak, suggesting time alone is a poor predictor.
+Baseline (Linear Regression): Using Year and Month alone, R² = 0.03 — essentially no predictive power, confirming time alone doesn't explain phosphorus levels.
 
-Adding latitude/longitude to the linear model did not help (R² = 0.18) — a signal that the relationship between location and phosphorus levels isn't linear.
+Random Forest, using Year, Month, Latitude, and Longitude, performed considerably better on an initial single train/test split (R² = 0.53), indicating a non-linear, feature-driven relationship linear regression couldn't capture.
 
-Random Forest, using Year, Month, Latitude, and Longitude, performed substantially better (R² = 0.74 on an initial single train/test split), confirming the relationship is non-linear and spatially driven.
+Cross-validation: An initial cross-validation attempt using default (unshuffled) folds produced a misleading, unstable result, since the data's inherent ordering (by date/station) meant folds weren't representative random samples. Switching to shuffled K-Fold cross-validation produced a stable, trustworthy estimate: mean R² = 0.422 across 5 folds.
 
-Cross-validation: An initial cross-validation attempt using default (unshuffled) folds produced a misleading, highly unstable result (mean R² = -0.74 across folds, with one fold as low as -4.86). This happened because the data's inherent ordering (by date/station) meant folds weren't representative random samples. Switching to shuffled K-Fold cross-validation resolved this, producing a much more stable and trustworthy estimate: mean R² = 0.657 across 5 folds.
+Hyperparameter tuning via GridSearchCV (shuffled folds) identified max_depth=10, n_estimators=100 as optimal — matching the cross-validated baseline almost exactly (R² = 0.422), suggesting the default model was already close to its practical ceiling given the available features and sample size.
 
-Hyperparameter tuning via GridSearchCV (shuffled folds) identified max_depth=10, n_estimators=300 as optimal, improving the cross-validated score slightly to R² = 0.676.
+Feature importance revealed Latitude as the dominant predictor (0.47), ahead of Year (0.18), Month (0.17), and Longitude (0.17) — meaning phosphorus levels vary more strongly north-south than east-west across these stations. (Note: prior to the geographic correction described above, Longitude appeared dominant instead — a result skewed by the inclusion of inland, out-of-region stations. This is itself informative: it shows how much a geographic scoping error can distort a spatial feature-importance finding.)
 
-Feature importance revealed Longitude as the dominant predictor (0.59), far ahead of Month (0.16), Latitude (0.13), and Year (0.12) — suggesting phosphorus pollution is driven primarily by where along the shoreline a station sits (east-west position) rather than by season or long-term trend. This aligns with the known concentration of agricultural runoff sources (e.g., the Maumee River) in Lake Erie's western basin.
+# **Machine Learning — Orthophosphate**
 
-## **Machine Learning — Orthophosphate**
+Orthophosphate (188 rows) was evaluated using the same shuffled cross-validation and tuning pipeline as Phosphorus.
 
-Given Orthophosphate's smaller sample size (217 rows vs. 438 for Phosphorus), a single train/test split proved unreliable (R² = -0.07). Rather than force a full modeling workup on an underpowered sample, Orthophosphate was evaluated using the same shuffled cross-validation and tuning pipeline as Phosphorus, primarily as a comparison/validation check against the Phosphorus findings, not as a standalone predictive model.
+Shuffled CV Mean R²: 0.508
+Tuned CV R²: 0.520
+Dominant feature: Longitude (0.53), followed by Year (0.24) and Month (0.20) — Latitude had minimal influence (0.03)
 
-Shuffled CV Mean R²: 0.326
-Tuned CV R²: 0.331
-Dominant feature: Longitude (0.33), consistent with Phosphorus, though with a flatter importance distribution across all four features (Latitude 0.30, Month 0.21, Year 0.16)
+Notably, Orthophosphate's model performed better than Phosphorus's on the corrected data (R² 0.52 vs 0.42), despite the smaller sample size — and identified a different dominant spatial axis (Longitude) than Phosphorus did (Latitude). This divergence is a genuine finding, not a contradiction: the two nutrients may be governed by somewhat different transport/loading mechanisms even at shared sites, which the station-level correlation below explores further.
 
 ## **Comparitive Conclusion**
 
