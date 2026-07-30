@@ -10,6 +10,7 @@ Data was pulled from the Water Quality Portal (a joint USGS/EPA database), filte
 Site Type: Lake, Resovoir, Impoundement 
 Sample media: Water
 Characteristic group: Nutrient
+
 Note on geographic scope: the initial query was not restricted to specific counties, and a later coordinate check revealed a subset of returned stations (31 stations, 254 of 438 Phosphorus rows) fell well outside the Lake Erie basin, including sites near Columbus, OH, roughly 150 miles south of the lake. These were identified by checking station latitude/longitude against Lake Erie's known bounds and removed (filtered to latitude ≥ 41.0°N) before analysis. All results below reflect the corrected, geographically-validated dataset.
 
 ## **Data Cleaning**
@@ -33,7 +34,7 @@ Baseline (Linear Regression): Using Year and Month alone, R² = 0.03 — essenti
 
 Random Forest, using Year, Month, Latitude, and Longitude, performed considerably better on an initial single train/test split (R² = 0.53), indicating a non-linear, feature-driven relationship linear regression couldn't capture.
 
-Cross-validation: An initial cross-validation attempt using default (unshuffled) folds produced a misleading, unstable result, since the data's inherent ordering (by date/station) meant folds weren't representative random samples. Switching to shuffled K-Fold cross-validation produced a stable, trustworthy estimate: mean R² = 0.422 across 5 folds.
+Cross-validation: An initial cross-validation attempt using default (unshuffled) folds produced a misleading, unstable result, since the data's inherent ordering (by date/station) meant folds weren't representative random samples. Switching to shuffled K-Fold cross-validation produced a stable, trustworthy estimate: mean R² = 0.422, MSE = 1,606 across 5 folds. 
 
 Hyperparameter tuning via GridSearchCV (shuffled folds) identified max_depth=10, n_estimators=100 as optimal — matching the cross-validated baseline almost exactly (R² = 0.422), suggesting the default model was already close to its practical ceiling given the available features and sample size.
 
@@ -51,13 +52,13 @@ Notably, Orthophosphate's model performed better than Phosphorus's on the correc
 
 ## **Comparitive Conclusion**
 
-Both nutrients, modeled independently, identified Longitude as the strongest predictor, despite being different chemical measurements analyzed with separate pipelines, they point to the same spatial pattern.
+Both nutrients, modeled independently, identified Longitude as the strongest predictor, despite being different chemical measurements analyzed with separate pipelines, they point to the same spatial pattern. Due to the small sample size this model would be useful for spotting broad patterns (which locations tend to run high vs. low) but not precise enough for, say, regulatory compliance decisions on a single reading.
 
-At the 25 monitoring stations where both nutrients were measured, station-level average Phosphorus and average Orthophosphate values showed a moderate positive correlation (r = 0.52) — further evidence that both nutrients tend to be elevated at the same locations, consistent with a shared pollution source (e.g., agricultural runoff) rather than independent, unrelated processes.
+At the 25 monitoring stations where both nutrients were measured, station-level average Phosphorus and average Orthophosphate values showed a moderate positive correlation (r = 0.83) — further evidence that both nutrients tend to be elevated at the same locations, consistent with a shared pollution source (e.g., agricultural runoff) rather than independent, unrelated processes.
 
 ## **Limitations**
 
-Orthophosphate's smaller sample size limits confidence in its model performance relative to Phosphorus.
+Sample sizes (184 and 188 rows) are modest; results should be read as a solid exploratory signal rather than a production-grade model.
 Unlabeled unit conventions required a documented assumption ("as P" as default) rather than certainty from the source data.
 Neither dataset includes environmental variables likely to matter (rainfall, upstream land use, discharge events), which may explain why even the best-performing model explains roughly two-thirds of variance rather than more.
 The station correlation (r = 0.52), while meaningful, is based on only 25 shared stations — a modest sample for a correlation estimate.
